@@ -79,7 +79,11 @@ jQuery(function($){
 					alert_message = smyles_bug_report.submit_success;
 				} else {
 					alert_status = 'alert-danger';
-					alert_message = smyles_bug_report.submit_error;
+					if ( data.error ) {
+						alert_message = data.error;
+					} else {
+						alert_message = smyles_bug_report.submit_error;
+					}
 				}
 
 				$( '#smyles-bug-spin' ).hide();
