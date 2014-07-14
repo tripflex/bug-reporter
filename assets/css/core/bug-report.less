@@ -1,0 +1,96 @@
+@error-red: #dd3d36;
+@error-red-dark: darken(@error-red, 15%);
+
+.smyles-open {
+	right: -10px !important;
+}
+
+#smyles-report-bug {
+	@media (max-width: 600px) {
+		width: 75%;
+		right: -75%;
+	}
+	@media (min-width: 600px) and (max-width: 768px) {
+		width: 55%;
+		right: -55%;
+	}
+	@media (min-width: 768px) {
+		width: 40%;
+		right: -40%;
+	}
+	@media (min-width: 992px) {
+		width: 30%;
+		right: -30%;
+	}
+	@media (min-width: 1200px) {
+		width: 25%;
+		right: -25%;
+	}
+
+	position: fixed;
+	top: 50px;
+	background-color: #222;
+	color: #fff;
+	border-radius: 5px 0 0 5px;
+	transition: all 0.3s ease 0s;
+	z-index: 2;
+
+	#smyles-bug-toggle {
+		background-color: @error-red;
+		color: #fff;
+		border-radius: 5px 0 0 5px;
+		left: -50px;
+		height: 40px;
+		line-height: 40px;
+		position: absolute;
+		text-align: center;
+		padding-right: 10px;
+		top: 0;
+		width: 50px;
+		transition: color 0.3s ease 0s;
+
+		&:hover {
+			background-color: @error-red-dark;
+			color: #000;
+			cursor: pointer;
+		}
+	}
+
+	.smyles-bug-toggle-open {
+		background-color: @error-red-dark !important;
+		color: #000 !important;
+		cursor: pointer;
+	}
+
+	#smyles-bug-header {
+		color: #fff;
+		background-color: @error-red-dark;
+		text-align: center;
+		margin: 0;
+		padding: 10px 20px;
+		position: relative;
+		line-height: 20px;
+		font-weight: 600;
+		text-transform: uppercase;
+	}
+
+	#smyles-bug-content {
+		padding: 25px;
+	}
+
+	.smyles-field-invalid {
+		background-color: #ffebe8 !important;
+		border-color: #c00 !important;
+	}
+
+	#smyles-bug-alert {
+		display: none;
+	}
+	
+	.smyles-spin-wrapper {
+		display: none;
+		height: 100%;
+		position: relative;
+		text-align: center;
+	}
+}
