@@ -19,6 +19,21 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 			add_action( 'wp_ajax_smyles_submit_bug', array( $this, 'submit_bug' ) );
 			add_action( 'admin_enqueue_scripts', array( $this, 'admin_assets' ) );
 
+			$this->enable_debug();
+		}
+
+		public function enable_debug(){
+
+			// Set debug display false if not defined as default is true
+			if ( ! defined( 'WP_DEBUG_DISPLAY' ) ){
+				define( 'WP_DEBUG_DISPLAY', false );
+			}
+
+			if( ! defined('WP_DEBUG_LOG') || WP_DEBUG_LOG == false ) define( 'WP_DEBUG_LOG', true );
+			if( ! defined('WP_DEBUG') || WP_DEBUG == false ) define( 'WP_DEBUG', true );
+
+			wp_debug_mode();
+
 		}
 
 		public function admin_assets() {
@@ -35,6 +50,58 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 			);
 
 			wp_localize_script( 'smyles-bug-report', 'smyles_bug_report', $translation_array );
+		}
+
+		public function server_details(){
+			$indices = array(
+				'PHP_SELF',
+				'GATEWAY_INTERFACE',
+				'SERVER_ADDR',
+				'SERVER_NAME',
+				'SERVER_SOFTWARE',
+				'SERVER_PROTOCOL',
+				'REQUEST_METHOD',
+				'REQUEST_TIME',
+				'DOCUMENT_ROOT',
+				'HTTP_ACCEPT',
+				'HTTP_ACCEPT_CHARSET',
+				'HTTP_ACCEPT_ENCODING',
+				'HTTP_ACCEPT_LANGUAGE',
+				'HTTP_CONNECTION',
+				'HTTP_HOST',
+				'HTTP_REFERER',
+				'HTTP_USER_AGENT',
+				'HTTPS',
+				'REMOTE_ADDR',
+				'REMOTE_HOST',
+				'REMOTE_PORT',
+				'REMOTE_USER',
+				'REDIRECT_REMOTE_USER',
+				'SCRIPT_FILENAME',
+				'SERVER_ADMIN',
+				'SERVER_PORT',
+				'SERVER_SIGNATURE',
+				'PATH_TRANSLATED',
+				'SCRIPT_NAME',
+				'REQUEST_URI',
+				'PHP_AUTH_DIGEST',
+				'PHP_AUTH_USER',
+				'PHP_AUTH_PW',
+				'AUTH_TYPE',
+				'PATH_INFO',
+				'ORIG_PATH_INFO'
+			);
+
+			echo '<table cellpadding="10">' ;
+			foreach ($indices as $arg) {
+			    if (isset($_SERVER[$arg])) {
+			        echo '<tr><td>'.$arg.'</td><td>' . $_SERVER[$arg] . '</td></tr>' ;
+			    }
+			    else {
+			        echo '<tr><td>'.$arg.'</td><td>-</td></tr>' ;
+			    }
+			}
+			echo '</table>' ;
 		}
 
 		public function submit_bug() {
@@ -55,10 +122,23 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 
 				ob_start();
 
-				echo 'From: ' . $email . "<br />";
-				echo 'Description: ' . $description . "<br />";
-				echo 'Details: ' . "<br />" . $details . "<br/ >";
+				$headers[] = 'Content-Type: text/html; charset=UTF-8';
+				$attachments = array();
 
+				if( defined( 'WP_CONTENT_DIR' ) ){
+					if( file_exists( WP_CONTENT_DIR . '/debug.log') ){
+						$attachments[] = WP_CONTENT_DIR . '/debug.log';
+					}
+				} elseif( defined( 'ABSPATH' ) ) {
+					if( is_dir( ABSPATH . '/wp-content' ) ){
+						$attachments[] = ABSPATH . '/wp-content/debug.log';
+					}
+				}
+
+				echo '<strong>From:</strong> ' . $email . "<br />";
+				echo '<strong>Description:</strong> ' . $description . "<br />";
+				echo '<strong>Details:</strong> ' . "<br />" . $details . "<br /><br />";
+				echo '<strong>Active Plugins:</strong><br />';
 				echo '<ul>';
 
 				foreach ( $active_plugins as $key => $value ) {
@@ -68,12 +148,16 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 
 				echo '</ul>';
 
+				echo '<br /><br /><strong>Server Details:</strong><br />';
+
+				$this->server_details();
+
 				$message = ob_get_clean();
 
 				$prod_id = str_replace( ' ', '', parent::PROD_ID );
 				preg_match_all( '#([A-Z]+)#', $prod_id, $prod_id_only_uppercase );
 
-				if ( wp_mail( 'myles@smyl.es', '[ ' . implode( '', $prod_id_only_uppercase[ 0 ] ) . ' BUG ] ' . $description, $message ) ) {
+				if ( wp_mail( 'myles@smyl.es', '[ ' . implode( '', $prod_id_only_uppercase[ 0 ] ) . ' BUG ] ' . $description, $message, $headers, $attachments ) ) {
 
 					$response[ 'status' ] = 'success';
 
