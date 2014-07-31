@@ -14,6 +14,8 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 	class sMyles_Bug_Report extends WP_Job_Manager_Field_Editor {
 
 		private $version = '@@version';
+		private $force_debug;
+		protected static $instance;
 
 		function __construct() {
 
@@ -28,24 +30,75 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 			add_action( 'wp_ajax_smyles_submit_bug', array( $this, 'submit_bug' ) );
 			add_action( 'admin_enqueue_scripts', array( $this, 'admin_assets' ) );
 
-			$this->enable_debug();
+			$this->force_debug = get_option( 'smyles_bug_report_force_debug' );
+			$this->check_debug_toggle();
+
+			if( $this->force_debug ) $this->set_debug();
 		}
 
-		function get_version(){
+		public function debug_disabled_notice() {
+
+			?>
+			<div class="updated">
+			<p><?php _e( 'Debug logging has been disabled.' ); ?></p>
+			</div><?php
+		}
+
+		public function debug_enabled_notice() {
+
+			?>
+			<div class="updated">
+			<p><?php _e( 'Debug logging has been enabled.' ); ?></p>
+			</div><?php
+		}
+
+		function check_debug_toggle(){
+
+			if( isset($_GET[ 'smyles-debug-toggle' ]) ){
+
+				if( $_GET['smyles-debug-toggle'] == 'enable' ){
+					$this->enable_debug();
+				} elseif ( $_GET[ 'smyles-debug-toggle' ] == 'disable' ){
+					$this->disable_debug();
+				}
+
+			}
+
+		}
+
+		function get_version() {
+
 			return $this->version;
 		}
 
-		public function enable_debug(){
+		function enable_debug(){
+			$this->force_debug = true;
+			add_action( 'admin_notices', array( $this, 'debug_enabled_notice' ) );
+			update_option( 'smyles_bug_report_force_debug', true );
+		}
 
-			// Set debug display false if not defined as default is true
-			if ( ! defined( 'WP_DEBUG_DISPLAY' ) ){
-				define( 'WP_DEBUG_DISPLAY', false );
-			}
+		function disable_debug(){
+			$this->force_debug = false;
+			add_action( 'admin_notices', array( $this, 'debug_disabled_notice' ) );
+			delete_option( 'smyles_bug_report_force_debug' );
+		}
 
-			if( ! defined('WP_DEBUG_LOG') || WP_DEBUG_LOG == false ) define( 'WP_DEBUG_LOG', true );
-			if( ! defined('WP_DEBUG') || WP_DEBUG == false ) define( 'WP_DEBUG', true );
+		public function set_debug() {
 
-			wp_debug_mode();
+			error_reporting( E_ALL );
+			ini_set( 'log_errors', 1 );
+			ini_set( 'error_log', WP_CONTENT_DIR . '/debug.log' );
+
+		}
+
+		function check_debug( $only_wp = false ){
+
+			if( defined('WP_DEBUG') && defined('WP_DEBUG_LOG') ) if( WP_DEBUG && WP_DEBUG_LOG ) return true;
+			if( $only_wp ) return false;
+
+			if( $this->force_debug ) return true;
+
+			return false;
 
 		}
 
@@ -59,13 +112,14 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 			// JS Translation Vars
 			$translation_array = array(
 				'submit_success' => __( 'Bug Report submitted succesfully!  Thank You!' ),
-				'submit_error' => __( 'There was an error submitting your bug report, please try again later.' )
+				'submit_error'   => __( 'There was an error submitting your bug report, please try again later.' )
 			);
 
 			wp_localize_script( 'smyles-bug-report', 'smyles_bug_report', $translation_array );
 		}
 
-		public function server_details(){
+		public function server_details() {
+
 			$indices = array(
 				'PHP_SELF',
 				'GATEWAY_INTERFACE',
@@ -105,17 +159,50 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 				'ORIG_PATH_INFO'
 			);
 
-			echo '<table cellpadding="10">' ;
-			foreach ($indices as $arg) {
-			    if (isset($_SERVER[$arg])) {
-			        echo '<tr><td>'.$arg.'</td><td>' . $_SERVER[$arg] . '</td></tr>' ;
-			    }
-			    else {
-			        echo '<tr><td>'.$arg.'</td><td>-</td></tr>' ;
-			    }
+			echo '<table cellpadding="10">';
+			foreach ( $indices as $arg ) {
+				if ( isset( $_SERVER[ $arg ] ) ) {
+					echo '<tr><td>' . $arg . '</td><td>' . $_SERVER[ $arg ] . '</td></tr>';
+				} else {
+					echo '<tr><td>' . $arg . '</td><td>-</td></tr>';
+				}
 			}
-			echo '</table>' ;
+			echo '</table>';
 		}
+
+		public function active_plugin_data() {
+
+			$active_plugins = wp_get_active_and_valid_plugins();
+			$output_data    = array( 'Name', 'Version', 'Author', 'PluginURI', 'Description' );
+
+			if ( ! empty( $active_plugins ) ) {
+
+				foreach ( $active_plugins as $plugin_file ) {
+
+					$plugin_data = get_plugin_data( $plugin_file, true, false );
+
+					echo '<i> - File:</i> ' . $plugin_file . '<br />';
+
+					if ( ! empty( $plugin_data ) ) {
+
+						foreach ( $output_data as $data_value ) {
+
+							if ( $plugin_data[ $data_value ] ) {
+								echo '   - <strong>' . $data_value . ':</strong> ' . $plugin_data[ $data_value ] . '<br />';
+							}
+
+						}
+
+					}
+
+					echo '-- <br />';
+
+				}
+
+			}
+
+		}
+
 
 		public function submit_bug() {
 
@@ -126,40 +213,38 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 			$details        = sanitize_text_field( $_POST[ 'details' ] );
 			$active_plugins = get_option( 'active_plugins' );
 
-			if( ! is_email( $email ) ){
+			if ( ! is_email( $email ) ) {
 
-				$response['status'] = 'error';
-				$response['error'] = __( 'Invalid Email' );
+				$response[ 'status' ] = 'error';
+				$response[ 'error' ]  = __( 'Invalid Email' );
 
 			} else {
 
 				ob_start();
 
-				$headers[] = 'Content-Type: text/html; charset=UTF-8';
+				$headers[ ]  = 'Content-Type: text/html; charset=UTF-8';
 				$attachments = array();
 
-				if( defined( 'WP_CONTENT_DIR' ) ){
-					if( file_exists( WP_CONTENT_DIR . '/debug.log') ){
-						$attachments[] = WP_CONTENT_DIR . '/debug.log';
+				if ( defined( 'WP_CONTENT_DIR' ) ) {
+					if ( file_exists( WP_CONTENT_DIR . '/debug.log' ) ) {
+						$attachments[ ] = WP_CONTENT_DIR . '/debug.log';
 					}
-				} elseif( defined( 'ABSPATH' ) ) {
-					if( is_dir( ABSPATH . '/wp-content' ) ){
-						$attachments[] = ABSPATH . '/wp-content/debug.log';
+				} elseif ( defined( 'ABSPATH' ) ) {
+					if ( is_dir( ABSPATH . '/wp-content' ) ) {
+						$attachments[ ] = ABSPATH . '/wp-content/debug.log';
 					}
 				}
 
 				echo '<strong>From:</strong> ' . $email . "<br />";
 				echo '<strong>Description:</strong> ' . $description . "<br />";
 				echo '<strong>Details:</strong> ' . "<br />" . $details . "<br /><br />";
-				echo '<strong>Active Plugins:</strong><br />';
-				echo '<ul>';
+				echo '<strong>---</strong><br />';
+				echo '<strong>Plugin Name:</strong> ' . parent::PROD_ID . '<br />';
+				echo '<strong>Plugin Version:</strong> ' . parent::VERSION . '<br />';
+				echo '<strong>---</strong><br />';
+				echo '<strong><u>Active Plugins:</u></strong><br />';
 
-				foreach ( $active_plugins as $key => $value ) {
-					$string = explode( '/', $value ); // Folder name will be displayed
-					echo '<li>' . $string[ 0 ] . '</li>';
-				}
-
-				echo '</ul>';
+				$this->active_plugin_data();
 
 				echo '<br /><br /><strong>Server Details:</strong><br />';
 
@@ -170,7 +255,7 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 				$prod_id = str_replace( ' ', '', parent::PROD_ID );
 				preg_match_all( '#([A-Z]+)#', $prod_id, $prod_id_only_uppercase );
 
-				if ( wp_mail( 'myles@smyl.es', '[ ' . implode( '', $prod_id_only_uppercase[ 0 ] ) . ' ' . parent::VERSION . 'BUG ] ' . $description, $message, $headers, $attachments ) ) {
+				if ( wp_mail( 'myles@smyl.es', '[ ' . implode( '', $prod_id_only_uppercase[ 0 ] ) . ' ' . parent::VERSION . ' BUG ] ' . $description, $message, $headers, $attachments ) ) {
 
 					$response[ 'status' ] = 'success';
 
@@ -190,7 +275,15 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 
 		}
 
-		public static function output_html() {
+		public static function current_url( $additional_args ){
+			$current_args = $_GET;
+			if( ! empty( $additional_args ) ) $current_args = array_merge( $current_args, $additional_args );
+			$current_url = '?' . http_build_query( $current_args );
+
+			return $current_url;
+		}
+
+		public function output_html() {
 
 			ob_start();
 			?>
@@ -217,14 +310,61 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 						<label for="smyles-bug-details"><?php _e( 'Bug Details' ); ?></label>
 						<textarea class="form-control" id="smyles-bug-details" rows="3" placeholder="<?php _e( 'Please describe the bug, how to replicate the bug, and any other details you can add.  Links to screenshots would be helpful as well.' ); ?>" required></textarea>
 					</div>
+					<div id="smyles-bug-debug">
+						<?php
+						if ( $this->check_debug() ) {
+							echo '<div id="smyles-bug-debug-enabled">';
+							echo '<i class="fa fa-thumbs-o-up"></i> ';
+							_e( 'Debug is <strong>ENABLED</strong>' );
+							echo '</div>';
+						} else {
+							echo '<div class="alert alert-danger">';
+							echo '<i class="fa fa-exclamation pull-left fa-3x"></i> ';
+							_e( 'Debug is <strong>DISABLED</strong>, please <a href="' . self::current_url( array( 'smyles-debug-toggle' => 'enable' ) ) . '">enable</a> debug!<br /><strong>THEN</strong> follow the steps again that caused the error,<br /><strong>BEFORE</strong> submitting a bug report!' );
+							echo '</div>';
+						}
+						?>
+					</div>
 					<button id="smyles-bug-reset" type="reset" class="button button-default">Reset</button>
-					<a href="#" id="smyles-bug-submit" class="button button-primary">Submit</a>
+					<a href="#" id="smyles-bug-submit" class="button button-primary">Submit Bug</a>
+					<?php
+						if( $this->force_debug ){
+							$debug_toggle_text = __( 'Disable Force Debug' );
+							$debug_toggle_action = 'disable';
+						} else {
+							$debug_toggle_text   = __( 'Enable Force Debug' );
+							$debug_toggle_action = 'enable';
+						}
+
+						if( ! $this->check_debug( true ) ){
+							?>
+							<a href="<?php echo self::current_url( array( 'smyles-debug-toggle' => $debug_toggle_action ) ); ?>" id="smyles-bug-debug-toggle" class="button button-default"><?php echo $debug_toggle_text; ?></a>
+							<?php
+						}
+					?>
 				</form>
 			</div>
 		</div>
 
 			<?php
 			ob_end_flush();
+		}
+
+		/**
+		 * Singleton Instance
+		 *
+		 * @since 1.0.0
+		 *
+		 * @return sMyles_Bug_Report
+		 */
+		public static function get_instance() {
+
+			// If the single instance hasn't been set, set it now.
+			if ( null == self::$instance ) {
+				self::$instance = new self;
+			}
+
+			return self::$instance;
 		}
 
 	}

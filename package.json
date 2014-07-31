@@ -1,7 +1,7 @@
 {
   "name": "smyles-bug-report",
   "title": "sMyles Bug Report",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "homepage": "http://plugins.smyl.es",
   "main": "Gruntfile.js",
   "devDependencies": {
