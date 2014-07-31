@@ -5,9 +5,16 @@
   "homepage": "http://plugins.smyl.es",
   "main": "Gruntfile.js",
   "devDependencies": {
-    "grunt": "^0.4.5",
+    "grunt": "~0.4.2",
+    "grunt-contrib-clean": "0.5.x",
+    "grunt-contrib-concat": "~0.3.0",
     "grunt-contrib-copy": "~0.5.0",
-    "grunt-replace": "^0.7.8"
+    "grunt-contrib-cssmin": "~0.7.0",
+    "grunt-contrib-less": "~0.9.0",
+    "grunt-contrib-uglify": "~0.3.2",
+    "grunt-contrib-watch": "~0.5.3",
+    "grunt-replace": "^0.7.8",
+    "grunt-shell": "~0.6.4"
   },
   "engines": {
     "node": ">=0.8.0",
