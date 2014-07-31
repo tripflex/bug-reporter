@@ -148,6 +148,9 @@ module.exports = function(grunt) {
             deploy: {
                 options: {
                     patterns: [{
+                        match: 'version',
+                        replacement: '<%= pkg.version %>'
+                    }, {
                         match: 'timestamp',
                         replacement: '<%= grunt.template.today() %>'
                     }]
