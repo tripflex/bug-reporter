@@ -1,10 +1,19 @@
 <?php
+/**
+ * sMyles WordPress Plugin Updater
+ *
+ * Author:       Myles McNamara
+ * Author URI:   http://plugins.smyl.es
+ * License:      GPL 3+
+ * Version:      @@version
+ * Last Updated: @@timestamp
+ */
 
 if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 
 	class sMyles_Bug_Report extends WP_Job_Manager_Field_Editor {
 
-		const VERSION = '1.0.0';
+		private $version = '@@version';
 
 		function __construct() {
 
@@ -20,6 +29,10 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 			add_action( 'admin_enqueue_scripts', array( $this, 'admin_assets' ) );
 
 			$this->enable_debug();
+		}
+
+		function get_version(){
+			return $this->version;
 		}
 
 		public function enable_debug(){
@@ -40,8 +53,8 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 
 			wp_enqueue_style( 'smyles-bug-report', SMYLES_BUG_REPORT_URL . '/assets/css/core.min.css' );
 			wp_enqueue_style( 'smyles-bug-report-vendor', SMYLES_BUG_REPORT_URL . '/assets/css/vendor.min.css' );
-			wp_enqueue_script( 'smyles-bug-report', SMYLES_BUG_REPORT_URL . '/assets/js/core.min.js', array( 'jquery' ), self::VERSION, true );
-			wp_enqueue_script( 'smyles-bug-report-vendor', SMYLES_BUG_REPORT_URL . '/assets/js/vendor.min.js', array( 'jquery' ), self::VERSION, true );
+			wp_enqueue_script( 'smyles-bug-report', SMYLES_BUG_REPORT_URL . '/assets/js/core.min.js', array( 'jquery' ), $this->version, true );
+			wp_enqueue_script( 'smyles-bug-report-vendor', SMYLES_BUG_REPORT_URL . '/assets/js/vendor.min.js', array( 'jquery' ), $this->version, true );
 
 			// JS Translation Vars
 			$translation_array = array(
@@ -157,7 +170,7 @@ if ( ! class_exists( 'sMyles_Bug_Report' ) ) {
 				$prod_id = str_replace( ' ', '', parent::PROD_ID );
 				preg_match_all( '#([A-Z]+)#', $prod_id, $prod_id_only_uppercase );
 
-				if ( wp_mail( 'myles@smyl.es', '[ ' . implode( '', $prod_id_only_uppercase[ 0 ] ) . ' BUG ] ' . $description, $message, $headers, $attachments ) ) {
+				if ( wp_mail( 'myles@smyl.es', '[ ' . implode( '', $prod_id_only_uppercase[ 0 ] ) . ' ' . parent::VERSION . 'BUG ] ' . $description, $message, $headers, $attachments ) ) {
 
 					$response[ 'status' ] = 'success';
 
